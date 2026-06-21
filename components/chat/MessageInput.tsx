@@ -76,7 +76,7 @@ export function MessageInput({
     <div
       data-testid="message-input"
       className={cn(
-        "flex w-full flex-col rounded-2xl border border-slate-200 bg-white",
+        "flex w-full flex-row items-center rounded-2xl border border-slate-200 bg-white",
         "focus-within:ring-1 focus-within:ring-slate-300",
         "dark:border-white/10 dark:bg-[#1e1e1e]",
         "dark:focus-within:ring-white/20",
@@ -95,12 +95,12 @@ export function MessageInput({
         disabled={disabled}
         aria-label="Message"
         className={cn(
-          "w-full resize-none bg-transparent px-4 pt-3 pb-1 text-sm leading-6 outline-none",
+          "flex-1 resize-none bg-transparent px-4 py-3 text-sm leading-6 outline-none",
           "placeholder:text-slate-400 dark:placeholder:text-slate-500",
           "disabled:cursor-not-allowed disabled:opacity-60",
         )}
       />
-      <div className="flex items-center justify-end px-3 pb-3 pt-1">
+      <div className="flex shrink-0 items-center pr-3">
         <button
           type="button"
           onClick={send}

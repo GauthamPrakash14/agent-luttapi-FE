@@ -4,49 +4,63 @@ import { useEffect, useRef } from "react";
 import type { Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { MessageBubble } from "./MessageBubble";
-import { LoadingDots } from "./LoadingDots";
 
 export interface ChatAreaProps {
   messages: Message[];
-  isStreaming?: boolean;
+  streamingContent?: string | null;
+  conversationId?: string;
+  isThinking?: boolean;
   className?: string;
 }
 
-/**
- * Scrollable, flex-column list of MessageBubbles.
- * Scrolls to bottom on mount and whenever a new message arrives.
- */
 export function ChatArea({
   messages,
-  isStreaming = false,
+  streamingContent = null,
+  conversationId = "",
+  isThinking = false,
   className,
 }: ChatAreaProps) {
-  const endRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Smooth scroll when a new committed message arrives
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length, isStreaming]);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length]);
+
+  // Instant scroll on every streaming token so the view follows the text down
+  useEffect(() => {
+    if (streamingContent === null) return;
+    const el = containerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [streamingContent]);
 
   return (
     <div
+      ref={containerRef}
       data-testid="chat-area"
-      className={cn(
-        "flex-1 overflow-y-auto",
-        className,
-      )}
+      className={cn("flex-1 overflow-y-auto", className)}
     >
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6">
         {messages.map((m) => (
           <MessageBubble key={m.id} message={m} />
         ))}
-        {isStreaming && (
-          <div className="flex justify-start">
-            <div className="rounded-2xl bg-slate-100 px-4 py-3 dark:bg-slate-800">
-              <LoadingDots />
-            </div>
-          </div>
+
+        {streamingContent !== null && (
+          <MessageBubble
+            message={{
+              id: "streaming",
+              conversationId,
+              role: "assistant",
+              content: streamingContent,
+              createdAt: new Date().toISOString(),
+            }}
+            isStreaming={streamingContent === ""}
+            isThinking={streamingContent === "" && isThinking}
+          />
         )}
-        <div ref={endRef} aria-hidden="true" />
+
+        <div ref={bottomRef} aria-hidden="true" />
       </div>
     </div>
   );

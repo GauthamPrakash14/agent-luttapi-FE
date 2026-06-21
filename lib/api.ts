@@ -20,11 +20,16 @@ export function toDisplayName(name: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-// Async generator — yields text tokens from the SSE chat stream.
+export type StreamEvent =
+  | { type: 'content'; text: string }
+  | { type: 'thinking'; active: boolean };
+
+// Async generator — yields StreamEvents from the SSE chat stream.
+// Content tokens are type:'content'; thinking-state changes are type:'thinking'.
 export async function* streamChat(
   conversationId: string,
   content: string,
-): AsyncGenerator<string> {
+): AsyncGenerator<StreamEvent> {
   const res = await fetch(
     `${API_BASE}/api/v1/conversations/${conversationId}/messages`,
     {
@@ -59,8 +64,12 @@ export async function* streamChat(
         const data = line.slice(6).trim();
         if (data === '[DONE]') return;
         try {
-          const token = JSON.parse(data)?.content;
-          if (token) yield token as string;
+          const parsed = JSON.parse(data);
+          if (typeof parsed.thinking === 'boolean') {
+            yield { type: 'thinking', active: parsed.thinking };
+          } else if (parsed.content) {
+            yield { type: 'content', text: parsed.content as string };
+          }
         } catch {
           /* skip malformed chunk */
         }

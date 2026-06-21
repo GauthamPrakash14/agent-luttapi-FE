@@ -6,6 +6,8 @@ const config: Config = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
     "\\.(css|less|scss|sass)$": "<rootDir>/__mocks__/styleMock.js",
+    "^react-markdown$": "<rootDir>/__mocks__/react-markdown.js",
+    "^remark-gfm$": "<rootDir>/__mocks__/remark-gfm.js",
   },
   transform: {
     "^.+\\.(t|j)sx?$": [

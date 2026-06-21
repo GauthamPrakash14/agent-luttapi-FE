@@ -3,8 +3,12 @@ import { ChatArea } from "@/components/chat/ChatArea";
 import type { Message } from "@/lib/types";
 
 beforeAll(() => {
-  // jsdom doesn't implement scrollIntoView
   Element.prototype.scrollIntoView = jest.fn();
+  // scrollTop is a getter/setter in jsdom; stub scrollHeight so the setter works
+  Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+    configurable: true,
+    get() { return 0; },
+  });
 });
 
 const makeMsg = (id: string, role: "user" | "assistant", content: string): Message => ({
@@ -33,14 +37,20 @@ describe("ChatArea", () => {
     expect(area.className).toContain("overflow-y-auto");
   });
 
-  it("renders the loading dots when isStreaming is true", () => {
-    render(<ChatArea messages={[]} isStreaming />);
+  it("renders a streaming bubble with loading dots when streamingContent is empty string", () => {
+    render(<ChatArea messages={[]} streamingContent="" conversationId="c1" />);
     expect(screen.getByTestId("loading-dots")).toBeInTheDocument();
   });
 
-  it("does NOT render loading dots when isStreaming is false", () => {
-    render(<ChatArea messages={[]} />);
+  it("renders a streaming bubble with content when streamingContent is non-empty", () => {
+    render(<ChatArea messages={[]} streamingContent="hello" conversationId="c1" />);
+    expect(screen.getByTestId("message-bubble")).toBeInTheDocument();
+  });
+
+  it("does NOT render a streaming bubble when streamingContent is null", () => {
+    render(<ChatArea messages={[]} streamingContent={null} />);
     expect(screen.queryByTestId("loading-dots")).not.toBeInTheDocument();
+    expect(screen.queryAllByTestId("message-bubble")).toHaveLength(0);
   });
 
   it("renders nothing problematic when messages is empty", () => {

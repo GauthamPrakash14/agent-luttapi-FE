@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { ChatArea } from "@/components/chat/ChatArea";
-import { MessageBubble } from "@/components/chat/MessageBubble";
 import { MessageInput } from "@/components/chat/MessageInput";
 import { apiFetch, streamChat } from "@/lib/api";
 import type { Conversation, Message } from "@/lib/types";
@@ -45,6 +44,7 @@ export default function ConversationPage() {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamingContent, setStreamingContent] = useState<string | null>(null);
+  const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasSentInitial = useRef(false);
 
@@ -60,15 +60,21 @@ export default function ConversationPage() {
       };
       setMessages((prev) => [...prev, userMsg]);
       setStreamingContent("");
+      setIsThinking(false);
       let full = "";
       try {
-        for await (const token of streamChat(id, content)) {
-          full += token;
-          setStreamingContent(full);
+        for await (const event of streamChat(id, content)) {
+          if (event.type === "thinking") {
+            setIsThinking(event.active);
+          } else {
+            full += event.text;
+            setStreamingContent(full);
+          }
         }
       } catch (e) {
         setError(String(e));
       } finally {
+        setIsThinking(false);
         if (full) {
           const aMsg: Message = {
             id: crypto.randomUUID(),
@@ -97,7 +103,13 @@ export default function ConversationPage() {
           createdAt: data.created_at,
           updatedAt: data.updated_at,
         });
-        setMessages(data.messages.map(mapMessage));
+        // Only populate from DB if there are no optimistic messages already in state.
+        // On a new chat, the auto-send effect adds the user message optimistically
+        // before this fetch resolves — overwriting with an empty DB response would
+        // wipe that message from the screen.
+        setMessages((prev) =>
+          prev.length > 0 ? prev : data.messages.map(mapMessage),
+        );
       })
       .catch((e) => setError(String(e)));
   }, [id]);
@@ -118,23 +130,12 @@ export default function ConversationPage() {
         {error && (
           <div className="px-4 py-2 text-sm text-red-500">{error}</div>
         )}
-        <ChatArea messages={messages} />
-        {streamingContent !== null && (
-          <div className="px-4 pb-2">
-            <div className="mx-auto w-full max-w-3xl">
-              <MessageBubble
-                message={{
-                  id: "streaming",
-                  conversationId: id,
-                  role: "assistant",
-                  content: streamingContent,
-                  createdAt: new Date().toISOString(),
-                }}
-                isStreaming={streamingContent === ""}
-              />
-            </div>
-          </div>
-        )}
+        <ChatArea
+          messages={messages}
+          streamingContent={streamingContent}
+          conversationId={id}
+          isThinking={isThinking}
+        />
         <div className="border-t border-slate-100 bg-white px-4 py-3 dark:border-white/5 dark:bg-[#0d0d0d]">
           <div className="mx-auto w-full max-w-3xl">
             <MessageInput
